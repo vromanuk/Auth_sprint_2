@@ -7,7 +7,7 @@ from marshmallow import ValidationError
 
 from src.schemas.oauth import OAuthSchema
 from src.services.log_history_service import LogHistoryService
-from src.services.oauth import OAuthService
+from src.services.oauth_service import OAuthService
 from src.services.users_service import UserService
 
 
