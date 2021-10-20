@@ -27,6 +27,7 @@ class GoogleCallback(Resource):
         user_info = oauth.google.parse_id_token(token)
 
         if user_info:
+            generated_password = UserService.generate_password()
             user_data = {
                 "email": user_info.get(
                     "email",
@@ -35,7 +36,7 @@ class GoogleCallback(Resource):
                 "login": user_info.get(
                     "login", UserService.generate_login(user_info.get("email"))
                 ),
-                "password": UserService.generate_password(),
+                "password": generated_password,
                 "social_id": user_info["sub"],
                 "social_name": "google",
             }
@@ -43,11 +44,12 @@ class GoogleCallback(Resource):
                 user = self.oauth_schema.load(user_data)
             except ValidationError as e:
                 return {"message": str(e)}
-            user_id = OAuthService.register(user)
-            if not user_id:
+            created_user = OAuthService.register(user)
+            if not created_user:
                 return {"message": "something went wrong"}, HTTPStatus.BAD_REQUEST
 
-            token = OAuthService.login(user_id)
+            token = OAuthService.login(created_user)
+            token["password"] = generated_password
 
             log_history_data = {
                 "logged_at": str(datetime.datetime.utcnow()),
