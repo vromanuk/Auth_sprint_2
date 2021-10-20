@@ -4,6 +4,7 @@ from flask_restful import Api
 from src.resources.auth import AuthLogin, AuthLogout, AuthRegister
 from src.resources.jwt import TokenRefresh
 from src.resources.log_history import LogHistoryResource
+from src.resources.oauth import GoogleCallback, GoogleSignIn
 from src.resources.roles import RolesResource
 from src.resources.smoke import Smoke
 from src.resources.users import UserRole, Users
@@ -38,5 +39,9 @@ def register_blueprints(app: Flask) -> None:
         "/users/<uuid:user_id>/role/<int:role_id>",
         strict_slashes=False,
     )
+
+    # OAuth
+    api.add_resource(GoogleSignIn, "/oauth/login", strict_slashes=False)
+    api.add_resource(GoogleCallback, "/oauth/callback", strict_slashes=False)
 
     app.register_blueprint(api_bp)

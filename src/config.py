@@ -32,6 +32,7 @@ SWAGGER_CONFIG = {
     "swagger_ui": True,
     "specs_route": f"{API_V1_STR}apidocs/",
 }
+CONF_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 
 class Config:
@@ -60,6 +61,9 @@ class Config:
 
     REDIS_HOST = os.getenv("REDIS_HOST", "redis")
     REDIS_PORT = os.getenv("REDIS_PORT", 6379)
+
+    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
     if not SECRET_KEY:
         raise ValueError("No `SECRET_KEY` set for Flask application")

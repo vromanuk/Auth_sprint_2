@@ -1,4 +1,7 @@
 import datetime
+import string
+from secrets import choice
+from typing import Optional
 from uuid import UUID
 
 from flask import current_app
@@ -66,3 +69,21 @@ class UserService:
             str(datetime.datetime.now()),
             ex=current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES"),
         )
+
+    @classmethod
+    def generate_login(cls, email: Optional[str] = None) -> str:
+        if email:
+            login, _ = email.split("@")
+            return login
+        return cls.generate_password(8)
+
+    @classmethod
+    def generate_email(cls, social_name: str, login: Optional[str] = None) -> str:
+        if login:
+            return f"{login}@{social_name}"
+        return f"{cls.generate_password(8)}@{social_name}"
+
+    @classmethod
+    def generate_password(cls, length: int = 16) -> str:
+        alphabet = string.ascii_letters + string.digits
+        return "".join(choice(alphabet) for _ in range(length))

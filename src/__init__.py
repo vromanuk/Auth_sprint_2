@@ -3,6 +3,7 @@ import pathlib
 from datetime import datetime as dt
 
 import redis
+from authlib.integrations.flask_client import OAuth
 from flasgger import Swagger
 from flask import Flask
 from flask_jwt_extended import JWTManager
@@ -15,6 +16,7 @@ from src.routes import register_blueprints
 
 jwt = JWTManager()
 swag = Swagger(template=SWAGGER_TEMPLATE, config=config.SWAGGER_CONFIG)
+oauth = OAuth()
 
 
 def create_app():
@@ -30,6 +32,7 @@ def create_app():
     initialize_extensions(app)
     initialize_commands(app)
     setup_redis(app)
+    setup_oauth()
 
     return app
 
@@ -37,6 +40,7 @@ def create_app():
 def initialize_extensions(app) -> None:
     jwt.init_app(app)
     swag.init_app(app)
+    oauth.init_app(app)
 
 
 def initialize_commands(app) -> None:
@@ -76,6 +80,14 @@ def setup_redis(app) -> None:
         port=app.config["REDIS_PORT"],
         db=0,
         decode_responses=True,
+    )
+
+
+def setup_oauth() -> None:
+    oauth.register(
+        name="google",
+        server_metadata_url=config.CONF_URL,
+        client_kwargs={"scope": "openid email profile"},
     )
 
 

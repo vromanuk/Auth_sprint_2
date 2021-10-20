@@ -19,15 +19,10 @@ from src.permissions import Permission
 class AuthService:
     @classmethod
     def register(cls, user) -> bool:
+        default_role_id = Role.fetch_default_role()
         with session_scope() as session:
             try:
-                user_role_id = (
-                    session.query(Role)
-                    .filter_by(default=True)
-                    .with_entities(Role.id)
-                    .scalar()
-                )
-                user.role_id = user_role_id
+                user.role_id = default_role_id
                 session.add(user)
                 session.commit()
                 return True

@@ -1,8 +1,18 @@
 import uuid
+from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    or_,
+)
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from werkzeug.security import generate_password_hash
 
 from src.database.db import Base, session_scope
@@ -79,6 +89,16 @@ class Role(Base):
 
             return True
 
+    @classmethod
+    def fetch_default_role(cls):
+        with session_scope() as session:
+            return (
+                session.query(Role)
+                .filter_by(default=True)
+                .with_entities(Role.id)
+                .scalar()
+            )
+
 
 class User(Base):
     __tablename__ = "users"
@@ -91,14 +111,18 @@ class User(Base):
         nullable=False,
     )
     # id = Column(Integer, primary_key=True)
-    login = Column(String, unique=True, nullable=False)
+    login = Column(String, unique=True, nullable=True)
     password = Column(String, nullable=False)
     log_history = relationship("LogHistory", backref="user", lazy="dynamic")
     role_id = Column(Integer, ForeignKey("roles.id"))
     role = relationship("Role", back_populates="users", lazy="selectin")
+    email = Column(String(64), nullable=True)
 
-    def __init__(self, login, password, is_admin=False):
+    def __init__(
+        self, login: str, password: str, email: Optional[str] = None, is_admin=False
+    ):
         self.login = login
+        self.email = email
         self.password = generate_password_hash(password)
         self.is_admin = is_admin
 
@@ -114,6 +138,17 @@ class User(Base):
     def find_by_uuid(cls, user_id: UUID):
         with session_scope() as session:
             return session.query(cls).filter_by(id=user_id).first()
+
+    @classmethod
+    def get_user_by_universal_login(
+        cls, login: Optional[str] = None, email: Optional[str] = None
+    ):
+        with session_scope() as session:
+            return (
+                session.query(cls)
+                .filter(or_(cls.login == login, cls.email == email))
+                .first()
+            )
 
 
 class LogHistory(Base):
@@ -131,5 +166,29 @@ class LogHistory(Base):
     ip = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    # user_id = Column(Integer, ForeignKey('users.id'))
+    # user_id = Column(Integer, ForeignKey("users.id"))
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+
+class SocialAccount(Base):
+    __tablename__ = "social_account"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
+        nullable=False,
+    )
+    # id = Column(Integer, primary_key=True)
+    # user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    user = relationship(User, backref=backref("social_accounts", lazy=True))
+
+    social_id = Column(String(64), nullable=False)
+    social_name = Column(String(64), nullable=False)
+
+    __table_args__ = (UniqueConstraint("social_id", "social_name", name="social_pk"),)
+
+    def __repr__(self):
+        return f"<SocialAccount {self.social_name}:{self.user_id}>"
