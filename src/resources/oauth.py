@@ -12,6 +12,17 @@ from src.services.users_service import UserService
 
 
 class GoogleSignIn(Resource):
+    """
+        Google authenticate method.
+        ---
+        tags:
+          - auth
+        responses:
+          200:
+            description: User successfully registered.
+          400:
+            description: Something went wrong.
+    """
     def get(self):
         oauth = current_app.extensions["authlib.integrations.flask_client"]
         redirect_uri = url_for("api.googlecallback", _external=True)
