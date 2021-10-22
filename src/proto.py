@@ -76,9 +76,10 @@ class UserInfoResponse(ProtobufType):
 
     @classmethod
     def message(cls, payload):
-        return cls.descriptor(
-            id=payload["id"],
-            email=payload["email"],
-            login=payload["login"],
-            role=payload["role"],
-        )
+        response = UserInfoResponseProto()
+        response.user.id = payload["id"]
+        response.user.email = payload["email"] or ""
+        response.user.login = payload["login"]
+        response.user.role = payload["role"]
+
+        return response
