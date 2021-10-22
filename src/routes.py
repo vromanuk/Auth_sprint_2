@@ -32,7 +32,7 @@ def register_blueprints(app: Flask) -> None:
     api.add_resource(TokenRefresh, "/refresh", strict_slashes=False)
 
     # Users
-    api.add_resource(Users, "/users", strict_slashes=False)
+    api.add_resource(Users, "/users", "/users/<uuid:user_id>", strict_slashes=False)
     api.add_resource(
         UserRole,
         "/users/<uuid:user_id>/role/",

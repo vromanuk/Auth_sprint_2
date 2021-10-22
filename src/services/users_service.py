@@ -87,3 +87,10 @@ class UserService:
     def generate_password(cls, length: int = 16) -> str:
         alphabet = string.ascii_letters + string.digits
         return "".join(choice(alphabet) for _ in range(length))
+
+    @classmethod
+    def get_user_info(cls, user_id: UUID):
+        user = User.find_by_uuid(user_id)
+        if not user:
+            return None
+        return user
