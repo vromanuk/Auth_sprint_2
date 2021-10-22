@@ -48,7 +48,7 @@ def wrap_proto(protobuf_type: Type[ProtobufType]) -> ProtobufResponse:
     """Creates a compatible HTTP response with the Protobuf type.
 
     Args:
-        protobuf_type (ProtobufType|Empty). A descriptor type from the compiled *.proto file.
+        protobuf_type (ProtobufType). A descriptor type from the compiled *.proto file.
 
     Returns:
         An Error or serialized Protobuf message.

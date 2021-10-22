@@ -90,7 +90,6 @@ class UserService:
 
     @classmethod
     def get_user_info(cls, user_id: UUID):
-        user = User.find_by_uuid(user_id)
-        if not user:
-            return None
-        return user
+        if user := User.find_by_uuid(user_id):
+            return user
+        return None
