@@ -7,7 +7,7 @@ from flask_restful import Resource
 from marshmallow import ValidationError
 
 from src.database.db import session_scope
-from src.proto import UserInfoResponse, wrap_proto
+from src.proto import UserInfoRequest, UserInfoResponse, wrap_proto
 from src.schemas.users import UserSchema
 from src.services.auth_service import admin_required
 from src.services.users_service import UserService
@@ -15,8 +15,10 @@ from src.services.users_service import UserService
 
 class Users(Resource):
     @wrap_proto(UserInfoResponse)
-    def get(self, user_id: UUID):
-        user_info = UserService.get_user_info(user_id)
+    @admin_required
+    def post(self):
+        message = UserInfoRequest.decode(request.data)
+        user_info = UserService.get_user_info(message.id)
         return {
             "id": str(user_info.id),
             "login": user_info.login,

@@ -6,6 +6,7 @@ from typing import Type
 from flask import Response
 
 from src.constants import PROTOBUF_MIMETYPE
+from src.protobuf.user_pb2 import UserInfoRequest as UserInfoRequestProto
 from src.protobuf.user_pb2 import UserInfoResponse as UserInfoResponseProto
 
 
@@ -79,7 +80,15 @@ class UserInfoResponse(ProtobufType):
         response = UserInfoResponseProto()
         response.user.id = payload["id"]
         response.user.email = payload["email"] or ""
-        response.user.login = payload["login"]
-        response.user.role = payload["role"]
+        response.user.login = payload["login"] or ""
+        response.user.role = payload["role"] or ""
 
         return response
+
+
+class UserInfoRequest(ProtobufType):
+    descriptor = UserInfoRequestProto
+
+    @classmethod
+    def message(cls, payload):
+        return cls.descriptor(id=payload["user_id"])
