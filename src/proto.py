@@ -5,7 +5,9 @@ from typing import Type
 
 from flask import Response
 
+from src import uapi
 from src.constants import PROTOBUF_MIMETYPE
+from src.protobuf.common_pb2 import Error as ErrorProto
 from src.protobuf.user_pb2 import UserInfoRequest as UserInfoRequestProto
 from src.protobuf.user_pb2 import UserInfoResponse as UserInfoResponseProto
 
@@ -57,12 +59,15 @@ def wrap_proto(protobuf_type: Type[ProtobufType]) -> ProtobufResponse:
     def _wrap_response(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            content = f(*args, **kwargs)
-            message = protobuf_type.message(content)
+            content, status, error = uapi.resolve_status(f, *args, **kwargs)
+            if error:
+                message = Error.message(status, error)
+            else:
+                message = protobuf_type.message(content)
 
             pb_response = ProtobufResponse(
                 message=message,
-                status=HTTPStatus.OK,
+                status=status,
             )
 
             return pb_response
@@ -92,3 +97,11 @@ class UserInfoRequest(ProtobufType):
     @classmethod
     def message(cls, payload):
         return cls.descriptor(id=payload["user_id"])
+
+
+class Error(ProtobufType):
+    descriptor = ErrorProto
+
+    @classmethod
+    def message(cls, status: int, error: str):
+        return cls.descriptor(status=status, error=error)

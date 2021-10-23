@@ -2,8 +2,12 @@ from functools import wraps
 from http import HTTPStatus
 from typing import Union
 
-from flask_jwt_extended import (create_access_token, create_refresh_token,
-                                get_jwt, verify_jwt_in_request)
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    get_jwt,
+    verify_jwt_in_request,
+)
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash
 

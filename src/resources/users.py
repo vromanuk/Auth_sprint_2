@@ -18,13 +18,15 @@ class Users(Resource):
     @admin_required
     def post(self):
         message = UserInfoRequest.decode(request.data)
+        if not message.id:
+            return {"message": "empty `user_id`"}, HTTPStatus.BAD_REQUEST
         user_info = UserService.get_user_info(message.id)
         return {
             "id": str(user_info.id),
             "login": user_info.login,
             "email": user_info.email,
             "role": user_info.role.name,
-        }
+        }, HTTPStatus.OK
 
     @jwt_required()
     def put(self):

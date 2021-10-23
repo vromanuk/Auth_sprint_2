@@ -60,3 +60,11 @@ def test_get_user_info(client, user, access_token_admin):
     assert user_info.user.login == (user.login or "")
     assert user_info.user.email == (user.email or "")
     assert user_info.user.role == user.role.name
+
+
+def test_get_user_info_empty_payload(client, access_token_admin):
+    resp = client.post(
+        f"{USERS_ENDPOINT}",
+        headers=access_token_admin,
+    )
+    assert resp.status_code == HTTPStatus.BAD_REQUEST
