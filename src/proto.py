@@ -1,6 +1,5 @@
 import functools
 from abc import abstractmethod
-from http import HTTPStatus
 from typing import Type
 
 from flask import Response
