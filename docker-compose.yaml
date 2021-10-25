@@ -28,5 +28,12 @@ services:
     depends_on:
       - web
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.27
+    ports:
+      - "16686:16686"
+    depends_on:
+      - web
+
 volumes:
   postgres_data:

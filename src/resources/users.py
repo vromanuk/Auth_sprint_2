@@ -1,7 +1,8 @@
 from http import HTTPStatus
 from uuid import UUID
 
-from flask import request
+import opentracing
+from flask import current_app, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Resource
 from marshmallow import ValidationError
@@ -17,10 +18,15 @@ class Users(Resource):
     @wrap_proto(UserInfoResponse)
     @admin_required
     def post(self):
+        flask_tracer = current_app.extensions["flask_tracer"]
+        parent_span = flask_tracer.get_span()
         message = UserInfoRequest.decode(request.data)
         if not message.id:
             return {"message": "empty `user_id`"}, HTTPStatus.BAD_REQUEST
-        user_info = UserService.get_user_info(message.id)
+        with opentracing.tracer.start_span("github-api", child_of=parent_span) as span:
+            span.set_tag("db.call", "user_service")
+            user_info = UserService.get_user_info(message.id)
+            span.set_tag("db.response", user_info.id)
         return {
             "id": str(user_info.id),
             "login": user_info.login,

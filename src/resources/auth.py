@@ -1,6 +1,7 @@
 import datetime
 from http import HTTPStatus
 
+import opentracing
 from flask import current_app, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from flask_restful import Resource
@@ -48,12 +49,18 @@ class AuthRegister(Resource):
           409:
             description: Such user exists.
         """
+        flask_tracer = current_app.extensions["flask_tracer"]
+        parent_span = flask_tracer.get_span()
         try:
             with session_scope() as session:
                 user = self.user_schema.load(request.json, session=session)
         except ValidationError as e:
             return {"message": str(e)}, HTTPStatus.BAD_REQUEST
-        created = AuthService.register(user)
+
+        with opentracing.tracer.start_span("register", child_of=parent_span) as span:
+            span.set_tag("db.call", "register")
+            created = AuthService.register(user)
+            span.set_tag("db.response", created)
         if created:
             return {"result": self.user_schema.dump(user)}, HTTPStatus.CREATED
         return {"message": "Such user exists"}, HTTPStatus.CONFLICT
@@ -88,10 +95,15 @@ class AuthLogin(Resource):
           401:
             description: Invalid credentials.
         """
+        flask_tracer = current_app.extensions["flask_tracer"]
+        parent_span = flask_tracer.get_span()
         login = request.json.get("login", None)
         password = request.json.get("password", None)
 
-        logged_in, token = AuthService.login(login=login, password=password)
+        with opentracing.tracer.start_span("login", child_of=parent_span) as span:
+            span.set_tag("db.call", "login")
+            logged_in, token = AuthService.login(login=login, password=password)
+            span.set_tag("db.response", logged_in)
         if not logged_in:
             return {"message": "Invalid Credentials."}, HTTPStatus.UNAUTHORIZED
 
@@ -106,7 +118,10 @@ class AuthLogin(Resource):
                 + current_app.config["JWT_REFRESH_TOKEN_EXPIRES"]
             ),
         }
-        LogHistoryService.create_entry(log_history_data)
+        with opentracing.tracer.start_span("log-history", child_of=parent_span) as span:
+            span.set_tag("db.call", "log_history")
+            LogHistoryService.create_entry(log_history_data)
+            span.set_tag("db.response", "ok")
 
         return token, HTTPStatus.OK
 
@@ -126,12 +141,19 @@ class AuthLogout(Resource):
           200:
             description: User successfully logged in.
         """
-        jti = get_jwt()["jti"]
-        current_user_id = get_jwt_identity()
-        jwt_redis_blocklist = get_redis()
-        jwt_redis_blocklist.set(
-            f"{current_user_id}:{jti}:{request.user_agent.string}",
-            "",
-            ex=current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES"),
-        )
+        flask_tracer = current_app.extensions["flask_tracer"]
+        parent_span = flask_tracer.get_span()
+        with opentracing.tracer.start_span("logout", child_of=parent_span) as span:
+            span.set_tag("redis.call", "add-key-to-redis")
+            jti = get_jwt()["jti"]
+            current_user_id = get_jwt_identity()
+            jwt_redis_blocklist = get_redis()
+            jwt_redis_blocklist.set(
+                f"{current_user_id}:{jti}:{request.user_agent.string}",
+                "",
+                ex=current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES"),
+            )
+            span.set_tag(
+                "redis.ack", f"{current_user_id}:{jti}:{request.user_agent.string}"
+            )
         return {"message": "Access token revoked"}, HTTPStatus.OK

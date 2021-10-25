@@ -7,6 +7,8 @@ from authlib.integrations.flask_client import OAuth
 from flasgger import Swagger
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_opentracing import FlaskTracer
+from jaeger_client import Config
 
 from src import config, redis_utils
 from src.config import SWAGGER_TEMPLATE
@@ -41,6 +43,8 @@ def initialize_extensions(app) -> None:
     jwt.init_app(app)
     swag.init_app(app)
     oauth.init_app(app)
+    flask_tracer = FlaskTracer(initialize_tracer, True, app)
+    app.extensions["flask_tracer"] = flask_tracer
 
 
 def initialize_commands(app) -> None:
@@ -108,3 +112,10 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
         logged_in_after_changing_password = issued_at < changed_password_at
 
     return token_in_redis is not None or logged_in_after_changing_password
+
+
+def initialize_tracer():
+    jaeger_config = Config(
+        config={"sampler": {"type": "const", "param": 1}}, service_name="auth-service"
+    )
+    return jaeger_config.initialize_tracer()  # also sets opentracing.tracer
