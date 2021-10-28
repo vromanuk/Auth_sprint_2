@@ -7,6 +7,8 @@ from authlib.integrations.flask_client import OAuth
 from flasgger import Swagger
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_opentracing import FlaskTracer
 from jaeger_client import Config
 
@@ -14,14 +16,18 @@ from src import config, redis_utils
 from src.config import SWAGGER_TEMPLATE
 from src.database.db import init_db
 from src.redis_utils import get_redis
-from src.routes import register_blueprints
 
 jwt = JWTManager()
 swag = Swagger(template=SWAGGER_TEMPLATE, config=config.SWAGGER_CONFIG)
 oauth = OAuth()
+limiter = Limiter(
+    key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+)
 
 
 def create_app():
+    from src.routes import register_blueprints
+
     app = Flask(__name__, instance_relative_config=True)
     cfg = os.getenv("CONFIG_TYPE", default="src.config.DevelopmentConfig")
     app.config.from_object(cfg)
@@ -43,6 +49,7 @@ def initialize_extensions(app) -> None:
     jwt.init_app(app)
     swag.init_app(app)
     oauth.init_app(app)
+    limiter.init_app(app)
     flask_tracer = FlaskTracer(initialize_tracer, True, app)
     app.extensions["flask_tracer"] = flask_tracer
 

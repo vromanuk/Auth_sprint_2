@@ -23,7 +23,9 @@ class Users(Resource):
         message = UserInfoRequest.decode(request.data)
         if not message.id:
             return {"message": "empty `user_id`"}, HTTPStatus.BAD_REQUEST
-        with opentracing.tracer.start_span("github-api", child_of=parent_span) as span:
+        with opentracing.tracer.start_span(
+            "user_service", child_of=parent_span
+        ) as span:
             span.set_tag("db.call", "user_service")
             user_info = UserService.get_user_info(message.id)
             span.set_tag("db.response", user_info.id)
