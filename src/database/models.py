@@ -1,22 +1,55 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    UniqueConstraint,
-    or_,
-)
+from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
+                        UniqueConstraint, or_)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
 from werkzeug.security import generate_password_hash
 
 from src.database.db import Base, session_scope
 from src.permissions import Permission
+
+
+def create_log_history_partition(target, connection, **kw) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_smart" 
+        PARTITION OF "log_history" FOR VALUES IN ('smart') PARTITION BY RANGE (logged_at);
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_mobile" 
+        PARTITION OF "log_history" FOR VALUES IN ('mobile') PARTITION BY RANGE (logged_at);
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_web" 
+        PARTITION OF "log_history" FOR VALUES IN ('web') PARTITION BY RANGE (logged_at);
+        """
+    )
+
+    # create sub-partitions for each main partition
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_smart_2020" 
+        PARTITION OF "user_sign_in_smart" FOR VALUES FROM ('2020-01-01') to ('2021-01-01');
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_mobile_2020" 
+        PARTITION OF "user_sign_in_mobile" FOR VALUES FROM ('2020-01-01') to ('2021-01-01');
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS "user_sign_in_web_2020" 
+        PARTITION OF "user_sign_in_web" FOR VALUES FROM ('2020-01-01') to ('2021-01-01');
+        """
+    )
 
 
 class Role(Base):
@@ -110,7 +143,6 @@ class User(Base):
         unique=True,
         nullable=False,
     )
-    # id = Column(Integer, primary_key=True)
     login = Column(String, unique=True, nullable=True)
     password = Column(String, nullable=False)
     log_history = relationship("LogHistory", backref="user", lazy="dynamic")
@@ -153,6 +185,13 @@ class User(Base):
 
 class LogHistory(Base):
     __tablename__ = "log_history"
+    _table_args__ = (
+        UniqueConstraint("id", "user_device_type"),
+        {
+            "postgresql_partition_by": "LIST (user_device_type)",
+            "listeners": [("after_create", create_log_history_partition)],
+        },
+    )
     id = Column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -160,13 +199,12 @@ class LogHistory(Base):
         unique=True,
         nullable=False,
     )
-    # id = Column(Integer, primary_key=True)
     logged_at = Column(DateTime, nullable=False, index=True)
     user_agent = Column(String, nullable=False)
+    user_device_type = Column(String, primary_key=True)
     ip = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
     expires_at = Column(DateTime, nullable=False)
-    # user_id = Column(Integer, ForeignKey("users.id"))
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
 
@@ -180,9 +218,7 @@ class SocialAccount(Base):
         unique=True,
         nullable=False,
     )
-    # id = Column(Integer, primary_key=True)
-    # user_id = Column(Integer, ForeignKey("users.id"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     user = relationship(User, backref=backref("social_accounts", lazy=True))
 
     social_id = Column(String(64), nullable=False)
